@@ -14,12 +14,15 @@ import { Button } from "@/components/ui/button";
 import { LoaderCircle } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useRouter } from "next/navigation";
 
 function UserInputDialog({ children, option }) {
     const [selectedExpert, setSelectedExpert] = useState(null);
     const [topic, setTopic] = useState("");
     const createDiscussion = useMutation(api.Discussion.createDiscussion);
     const [loading, setLoading] = useState(false);
+    const [openDialog, setOpenDialog] = useState(false);
+    const router = useRouter();
 
     const OnClickNext = async () => {
          setLoading(true);
@@ -30,10 +33,12 @@ function UserInputDialog({ children, option }) {
             })
             console.log("result", result);
             setLoading(false);
+            setOpenDialog(false);
+            router.push('/discussion/'+result);
     };
 
     return (
-        <Dialog>
+        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
             <DialogTrigger>{children}</DialogTrigger>
             <DialogContent className="max-w-md p-6 rounded-lg">
                 <DialogHeader>
