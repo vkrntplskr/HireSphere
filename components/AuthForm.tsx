@@ -4,7 +4,7 @@ import { z } from "zod";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
-import { auth } from "@/firebase/client";
+import { auth, googleAuthProvider } from "@/firebase/client";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
 } from "firebase/auth";
 
 import { Form } from "@/components/ui/form";
@@ -95,6 +96,53 @@ const AuthForm = ({ type }: { type: FormType }) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      const userCredential = await signInWithPopup(auth, googleAuthProvider);
+      const user = userCredential.user;
+      const idToken = await user.getIdToken();
+  
+      if (!idToken) {
+        toast.error("Google sign-in failed. Please try again.");
+        return;
+      }
+  
+      const result = await signUp({
+        uid: user.uid,
+        name: user.displayName || "No Name",
+        email: user.email!,
+        password: "",
+      });
+  
+      if (!result || (result.success === false && result.message !== "User already exists. Please sign in.")) {
+        toast.error(result?.message || "Sign-up failed.");
+        return;
+      }
+  
+      const signinRes = await signIn({
+        email: user.email!,
+        idToken,
+      });
+  
+      if (!signinRes || !signinRes.success) {
+        toast.error(signinRes?.message || "Something went wrong during sign-in.");
+        return;
+      }
+  
+      toast.success("Signed in successfully with Google.");
+      router.push("/");
+    } catch (error: any) {
+      if (error.code === "auth/popup-blocked") {
+        toast.error("Popup was blocked. Please enable popups and try again.");
+      } else if (error.code === "auth/popup-closed-by-user") {
+        toast.error("Popup was closed before signing in.");
+      } else {
+        console.error("Google Sign-In Error:", error);
+        toast.error("There was an error signing in with Google.");
+      }
+    }
+  };
+
   const isSignIn = type === "sign-in";
 
   return (
@@ -143,6 +191,21 @@ const AuthForm = ({ type }: { type: FormType }) => {
             </Button>
           </form>
         </Form>
+      
+        <div className="flex items-center justify-center gap-4">
+          <div className="h-px flex-1 bg-gray-400" />
+          <span className="text-sm text-gray-300">or</span>
+          <div className="h-px flex-1 bg-gray-400" />
+        </div>
+
+          <Button
+            className="btn-google rounded-full py-5 font-bold"
+            type="button"
+            onClick={handleGoogleSignIn}
+          >
+            <Image src="/googlelogo.svg" alt="google" height={24} width={24} />
+            Continue with Google
+          </Button>
 
         <p className="text-center">
           {isSignIn ? "No account yet?" : "Have an account already?"}
